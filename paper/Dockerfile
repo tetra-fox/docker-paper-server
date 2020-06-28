@@ -2,10 +2,12 @@ FROM openjdk:8-jre
 
 WORKDIR /data
 
-RUN apt-get update && apt-get install -y jq
+RUN apt-get update && apt-get install -y \
+    jq
 
 # defaults, change in docker-compose.yml
 ENV JVM_ARGS="-Xmx8G" \
+    PAPER_ARGS="--nogui" \
     MC_RELEASE="1.15.2" \
     PAPER_BUILD="latest" \
     USER="1000" \

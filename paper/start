@@ -10,4 +10,4 @@ if [ $(stat -c %u /data) != $USER ] || [ $(stat -c %g /data) != $GROUP ]; then
 fi
 
 # Launch the server with the specified JVM arguments
-java $JVM_ARGS -jar /data/paper.jar nogui
+java $JVM_ARGS -jar /data/paper.jar $PAPER_ARGS

@@ -4,6 +4,7 @@ services:
   paper:
     environment:
       JVM_ARGS: "-Xmx8G"
+      PAPER_ARGS: "--nogui"
       MC_RELEASE: "1.15.2"
       PAPER_BUILD: "latest"
       USER: "1000"
