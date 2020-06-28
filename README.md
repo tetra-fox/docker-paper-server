@@ -14,7 +14,7 @@ The updater script will automatically install the PaperMC build and Minecraft ve
 ```docker-compose up -d```
 
 ### Stopping the server
-```docker-compose up -d```
+```docker-compose down```
 
 ### Attaching to the shell
 ```docker attach [CONTAINER_NAME]```
