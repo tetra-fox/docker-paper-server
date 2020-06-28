@@ -1,0 +1,13 @@
+#!/bin/bash
+echo ========== SERVER ==========
+echo Starting server...
+
+# Make sure that the server files have the proper permissions
+umask 0000
+if [ $(stat -c %u /data) != $USER ] || [ $(stat -c %g /data) != $GROUP ]; then
+  echo Changing ownership of /data...
+  chown -R $USER:$GROUP /data
+fi
+
+# Launch the server with the specified JVM arguments
+java $JVM_ARGS -jar /data/paper.jar nogui

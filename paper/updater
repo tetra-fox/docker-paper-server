@@ -1,0 +1,32 @@
+#!/bin/bash
+echo ========== UPDATER ==========
+
+# Version check
+echo Checking PaperMC build...
+CURRENT_PAPER_BUILD=$(java -jar /data/paper.jar -v | grep -oE '[^-]+$')
+BUILD_TO_DOWNLOAD=$(curl -Ss https://papermc.io/api/v1/paper/$MC_RELEASE/$PAPER_BUILD | jq -r '.build')
+
+get_jar () {
+    echo Getting PaperMC build $BUILD_TO_DOWNLOAD for Minecraft $MC_RELEASE...
+    wget https://papermc.io/api/v1/paper/$MC_RELEASE/$BUILD_TO_DOWNLOAD/download -O /data/paper.jar
+    echo Done!
+}
+
+if [ "$CURRENT_PAPER_BUILD" == "" ]; then
+    echo It appears you have not downloaded PaperMC yet.
+    get_jar
+else
+    echo You have PaperMC build $CURRENT_PAPER_BUILD.
+
+    # Check for updates (or switch build / Minecraft version)
+    echo Checking for updates...
+    if [ "$CURRENT_PAPER_BUILD" != "$BUILD_TO_DOWNLOAD" ]; then
+        echo Update available!
+        get_jar
+    else
+        echo No updates available.
+    fi
+fi
+
+# Start the server
+exec /start
