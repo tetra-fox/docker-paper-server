@@ -1,11 +1,11 @@
 #!/bin/bash
 echo ========== SERVER ==========
-echo Starting server...
+echo "Starting server..."
 
 # Make sure that the server files have the proper permissions
 umask 0000
 if [ $(stat -c %u /data) != $USER ] || [ $(stat -c %g /data) != $GROUP ]; then
-  echo Changing ownership of /data...
+  echo Changing owner of /data to $USER:$GROUP...
   chown -R $USER:$GROUP /data
 fi
 
