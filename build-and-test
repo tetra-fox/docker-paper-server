@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# i'm probably just stupid and don't know how to use docker so ignore this script
+docker-compose down
+docker container prune -f
+docker image prune -f
+docker rmi docker-paper-server_paper -f
+docker image build ./paper --no-cache
+docker-compose up

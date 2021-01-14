@@ -5,80 +5,66 @@ LIGHTRED="\033[1;31m"
 YELLOW="\033[1;33m"
 LIGHTGREEN="\033[1;32m"
 CYAN="\033[0;36m"
+RESET="\u001b[0m"
+
+API_ROOT="https://papermc.io/api/v2/projects/paper/versions"
 
 # Define functions
+get_metadata () {
+    # why did they remove this
+    [ "$PAPER_BUILD" = "latest" ] && PAPER_BUILD=$(curl -s $API_ROOT/$MC_RELEASE | jq -r ".builds | last")
+    NEW_JAR_INFO=$(curl -s $API_ROOT/$MC_RELEASE/builds/$PAPER_BUILD)
+    NEW_JAR_NAME=$(echo $NEW_JAR_INFO | jq -r ".downloads.application.name")
+    NEW_JAR_HASH=$(echo $NEW_JAR_INFO | jq -r ".downloads.application.sha256")
+    NEW_JAR_DL="$API_ROOT/$MC_RELEASE/builds/$PAPER_BUILD/downloads/$NEW_JAR_NAME"
+}
+
 get_jar () {
-    echo -e "${CYAN}Getting Paper $NEW_VERSION_STRING..."
-    wget -q https://papermc.io/api/v1/paper/$NEW_MC_RELEASE/$NEW_PAPER_BUILD/download -O /data/paper.jar
-    echo -e "${LIGHTGREEN}Done!"
+    echo -e "${CYAN}Fetching $NEW_JAR_NAME...${RESET}"
+    wget -q $NEW_JAR_DL -O /data/paper.jar
+    echo -e "${CYAN}Writing hash to file...${RESET}"
+    printf "$NEW_JAR_HASH" > /data/hash
+    echo -e "${LIGHTGREEN}Done!${RESET}"
+}
+
+is_updated () {
+    if [ ! -f "/data/hash" ]; then
+        echo -e "${CYAN}Generating hash & writing to file...${RESET}"
+        openssl dgst -sha256 /data/paper.jar | awk '{printf $2}' > /data/hash
+    fi
+
+    CURRENT_JAR_HASH=$(cat /data/hash)
+    [ "$CURRENT_JAR_HASH" = "$NEW_JAR_HASH" ] && return
+    # This will only be reached if the above condition is false
+    false
 }
 
 echo "========== UPDATER =========="
-# Validate selected Paper version
-if [[ $(curl -s -o /dev/null -w "%{http_code}" https://papermc.io/api/v1/paper/$MC_RELEASE/$PAPER_BUILD) != "200" ]]; then
-    echo -e "${LIGHTRED}====================ERROR======================="
-    echo -e "${LIGHTRED}The Paper version you have selected is invalid!"
-    echo -e "${LIGHTRED}Aborting..."
-    echo -e "${LIGHTRED}====================ERROR======================="    
+get_metadata
+# Validate that the selected Paper version exists on the server
+if [[ $(echo "$NEW_JAR_INFO" | jq -r ".error") != "null" ]]; then
+    echo -e "${LIGHTRED}====================ERROR=======================${RESET}"
+    echo -e "${LIGHTRED}The Paper version you have selected is invalid!${RESET}"
+    echo -e "${LIGHTRED}Aborting...${RESET}"
+    echo -e "${LIGHTRED}====================ERROR=======================${RESET}"    
     exit 1;
 fi
 
 # Download Paper if it is not installed
 if [ ! -f "/data/paper.jar" ]; then
-    echo -e "${YELLOW}It appears you have not downloaded Paper yet."
-    NEW_MC_RELEASE=$MC_RELEASE
-    NEW_PAPER_BUILD=$PAPER_BUILD
-    NEW_VERSION_STRING="git-Paper-$NEW_PAPER_BUILD (MC: $NEW_MC_RELEASE)"
+    echo -e "${YELLOW}It appears that Paper has not been downloaded yet.${RESET}"
     get_jar
-    # This will only generate the initial server setup files
+    # This will only generate the initial server setup files if the EULA has not been accepted
     exec /start
 fi
 
-# Get the current Paper version through any means possible
-echo -e "${CYAN}Checking Paper version..."
-if [ -f "/data/version-history.json" ]; then
-    # Method 1: version-history.json (1.12.2+)
-    CURRENT_VERSION_STRING=$(cat /data/version-history.json | jq -r ".currentVersion")
-    CURRENT_VERSION_HASH=$(echo $CURRENT_VERSION_STRING | openssl dgst -sha256)
-    echo -e "${YELLOW}You have Paper $CURRENT_VERSION_STRING."
-elif [[ $(unzip -Z1 /data/paper.jar | grep patch.json) ]]; then
-    # Method 2: patch.json (1.12.1 and lower)
-    CURRENT_PAPER_BUILD=$(java $JVM_ARGS -jar /data/paper.jar -v | grep -oE "[^-]+$")
-    CURRENT_MC_RELEASE=$(unzip -p /data/paper.jar patch.json | jq -r ".version")
-    CURRENT_VERSION_STRING="git-Paper-$CURRENT_PAPER_BUILD (MC: $CURRENT_MC_RELEASE)"
-    CURRENT_VERSION_HASH=$(echo $CURRENT_VERSION_STRING | openssl dgst -sha256)
-    echo -e "${YELLOW}You have Paper $CURRENT_VERSION_STRING."
-elif [[ $(unzip -Z1 /data/paper.jar | grep patch.properties) ]]; then
-    # Method 3: patch.properties (Fallback for 1.12.2+)
-    CURRENT_PAPER_BUILD=$(java -jar /data/paper.jar -v | grep -oE "[^-]+$")
-    CURRENT_MC_RELEASE=$(unzip -p /data/paper.jar patch.properties | grep -oE -m1 "version=.+" | cut -d"=" -f2)
-    CURRENT_VERSION_STRING="git-Paper-$CURRENT_PAPER_BUILD (MC: $CURRENT_MC_RELEASE)"
-    CURRENT_VERSION_HASH=$(echo $CURRENT_VERSION_STRING | openssl dgst -sha256)
-    echo -e "${YELLOW}You have Paper $CURRENT_VERSION_STRING."
+# Check if Paper is updated/switch build
+echo -e "${CYAN}Checking Paper version...${RESET}"
+if is_updated; then
+    echo -e "${YELLOW}Your Paper version up to date.${RESET}"
 else
-    echo -e "${LIGHTRED}=================================ERROR====================================="
-    echo -e "${LIGHTRED}An unknown error occured while checking the version of your Paper install."
-    echo -e "${LIGHTRED}There should be some error information above."
-    echo -e "${LIGHTRED}Most likely, your paper.jar has become corrupt."
-    echo -e "${LIGHTRED}To fix this, delete paper.jar and restart the server."
-    echo -e "${LIGHTRED}Aborting..."
-    echo -e "${LIGHTRED}=================================ERROR====================================="
-    exit 1
-fi
-
-# Check for updates (or switch build / Minecraft version)
-echo -e "${CYAN}Checking for updates..."
-NEW_VERSION=$(curl -Ss https://papermc.io/api/v1/paper/$MC_RELEASE/$PAPER_BUILD)
-NEW_MC_RELEASE=$(echo $NEW_VERSION | jq -r ".version")
-NEW_PAPER_BUILD=$(echo $NEW_VERSION | jq -r ".build")
-NEW_VERSION_STRING="git-Paper-$NEW_PAPER_BUILD (MC: $NEW_MC_RELEASE)"
-NEW_VERSION_HASH=$(echo $NEW_VERSION_STRING | openssl dgst -sha256)
-
-if [ "$CURRENT_VERSION_HASH" != "$NEW_VERSION_HASH" ]; then
-    echo -e "${LIGHTGREEN}Update available!"
+    echo -e "${YELLOW}Your Paper version is out of date!${RESET}"
     get_jar
-else
-    echo -e "${YELLOW}No updates available."
 fi
 
 # Finally, start the server
