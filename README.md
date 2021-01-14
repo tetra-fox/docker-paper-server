@@ -27,7 +27,7 @@ Reboot the server with any method you desire
 |-|-|-|
 |JVM_ARGS|Any JVM arguments such as GC options or memory amount|`-Xmx8G`|
 |PAPER_ARGS|Paper launch arguments (It's best to leave `--nogui`, if making changes)|`--nogui`|
-|MC_RELEASE|Minecraft version (See a list of supported versions [here](https://papermc.io/api/v1/paper))|`1.15.2`|
+|MC_RELEASE|Minecraft version (See a list of supported versions [here](https://papermc.io/api/v1/paper))|`1.16.4`|
 |PAPER_BUILD|Which build of Paper to download|`latest`|
 |USER|Which user to set file permissions for|`1000`|
 |GROUP|Which group to set file permissions for|`1000`|
